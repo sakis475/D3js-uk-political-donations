@@ -1,3 +1,7 @@
+// Configure and load meSpeak library
+meSpeak.loadConfig("mespeak/mespeak_config.json");
+meSpeak.loadVoice("mespeak/voices/en/en-us.json");
+
 // GLOBALS
 var w = 1000,h = 900;
 var padding = 2;
@@ -21,7 +25,7 @@ var entityCentres = {
 		individual: {x: w / 3.65, y: h / 3.3},
 	};
 
-var fill = d3.scale.ordinal().range(["#F02233", "#087FBD", "#FDBB30"]);
+var fill = d3.scale.ordinal().range(["#008000","#FF0000", "#0000FF"]);
 
 var svgCentre = { 
     x: w / 3.6, y: h / 2
@@ -48,12 +52,14 @@ function transition(name) {
 		$("#view-donor-type").fadeOut(250);
 		$("#view-source-type").fadeOut(250);
 		$("#view-party-type").fadeOut(250);
+		$("#view-by-amount").fadeOut(250);
 		return total();
 		//location.reload();
 	}
 	if (name === "group-by-party") {
 		$("#initial-content").fadeOut(250);
 		$("#value-scale").fadeOut(250);
+		$("#view-by-amount").fadeOut(250);
 		$("#view-donor-type").fadeOut(250);
 		$("#view-source-type").fadeOut(250);
 		$("#view-party-type").fadeIn(1000);
@@ -62,13 +68,24 @@ function transition(name) {
 	if (name === "group-by-donor-type") {
 		$("#initial-content").fadeOut(250);
 		$("#value-scale").fadeOut(250);
+		$("#view-by-amount").fadeOut(250);
 		$("#view-party-type").fadeOut(250);
 		$("#view-source-type").fadeOut(250);
 		$("#view-donor-type").fadeIn(1000);
 		return donorType();
 	}
+	if (name === "group-by-amount") {
+		$("#initial-content").fadeOut(250);
+		$("#value-scale").fadeOut(250);
+		$("#view-donor-type").fadeOut(250);
+		$("#view-party-type").fadeOut(250);
+		$("#view-source-type").fadeOut(250);
+		$("#view-by-amount").fadeIn(1000);
+		return amountSort();
+	}
 	if (name === "group-by-money-source")
 		$("#initial-content").fadeOut(250);
+		$("#view-by-amount").fadeOut(250);
 		$("#value-scale").fadeOut(250);
 		$("#view-donor-type").fadeOut(250);
 		$("#view-party-type").fadeOut(250);
@@ -92,10 +109,11 @@ function start() {
 		.attr("r", 0)
 		.style("fill", function(d) { return fill(d.party); })
 		.on("mouseover", mouseover)
-		.on("mouseout", mouseout);
+		.on("mouseout", mouseout)
 		// Alternative title based 'tooltips'
 		// node.append("title")
 		//	.text(function(d) { return d.donor; });
+		.on("click", mouseClick);
 
 		force.gravity(0)
 			.friction(0.75)
@@ -134,6 +152,8 @@ function donorType() {
 		.start();
 }
 
+
+
 function fundsType() {
 	force.gravity(0)
 		.friction(0.75)
@@ -151,6 +171,23 @@ function parties(e) {
 
 function entities(e) {
 	node.each(moveToEnts(e.alpha));
+
+		node.attr("cx", function(d) { return d.x; })
+			.attr("cy", function(d) {return d.y; });
+}
+
+
+
+function amountSort() {
+	force.gravity(0)
+		.friction(0.8)
+		.charge(function(d) { return -Math.pow(d.radius, 2.0) / 3; })
+		.on("tick", byAmount)
+		.start();
+}
+
+function byAmount(e) {
+	node.each(moveTobyAmount(e.alpha));
 
 		node.attr("cx", function(d) { return d.x; })
 			.attr("cy", function(d) {return d.y; });
@@ -241,6 +278,38 @@ function moveToFunds(alpha) {
 	};
 }
 
+function moveTobyAmount(alpha) {
+	return function(d) {
+	var centreX;
+	var centreY;
+	//	console.log(svgCentre.y);
+	//y =+ 100    x = 300 or 750
+			if (d.value <= 25001) {
+				centreY = 700;
+				centreX = 300;
+				
+			} else if (d.value <= 50001) {
+				centreY = 600;
+				centreX = 750;
+				
+			} else if (d.value <= 100001) {
+				centreY = 500;
+				centreX = 300;
+				
+			} else  if (d.value <= 1000001) {
+				centreY = 400;
+				centreX = 750;
+				
+			} else  if (d.value <= maxVal) {
+				centreY = 300;
+				centreX = 300;
+			}
+
+		d.x += (centreX - d.x) * (brake + 0.06) * alpha * 1.2;
+		d.y += (centreY - 100 - d.y) * (brake + 0.06) * alpha * 1.2;
+	};
+}
+
 // Collision detection function by m bostock
 function collide(alpha) {
   var quadtree = d3.geom.quadtree(nodes);
@@ -307,6 +376,10 @@ function display(data) {
 	return start();
 }
 
+//Public variables, gia mouseover kai mouseout
+var voiceID;
+var playVoice;
+
 function mouseover(d, i) {
 	// tooltip popup
 	var mosie = d3.select(this);
@@ -344,6 +417,13 @@ function mouseover(d, i) {
     .style("top", (parseInt(d3.select(this).attr("cy") - (d.radius+150)) + offset.top) + "px")
 		.html(infoBox)
 			.style("display","block");
+
+	//Kanei speech to donor name meta apo 0,3 deytera
+    playVoice = setTimeout(function() {
+		voiceID = meSpeak.speak(d.donor + " has donated, " + amount + ",pounds");
+	}, 300);
+
+
 	
 	
 	}
@@ -356,7 +436,29 @@ function mouseout() {
 
 		d3.select(".tooltip")
 			.style("display", "none");
+
+
+		//Stamataei opoio setTimeout playVoice htan programatismeno
+		window.clearTimeout(playVoice);
+		//Stamataei opoia VoiceID paizei twra
+		meSpeak.stop(voiceID);
 		}
+
+
+function mouseClick() {
+	
+		//Anoigei ena link me click se kathe mplala gia ola ta node me click 
+		
+		
+		nodeGroup.selectAll("circle")
+		.on('click', function(d) {
+        console.log('open tab')
+        window.open(
+          "http://www.google.com/search?q=" + d.donor,
+          '_blank' // <- This is what makes it open in a new window.
+        );
+      });
+	}
 
 $(document).ready(function() {
 		d3.selectAll(".switch").on("click", function(d) {
