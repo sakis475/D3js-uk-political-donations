@@ -3,12 +3,13 @@ meSpeak.loadConfig("mespeak/mespeak_config.json");
 meSpeak.loadVoice("mespeak/voices/en/en-us.json");
 
 // GLOBALS
-var w = 1000,h = 900;
+var w = 1100,h = 900;
 var padding = 2;
 var nodes = [];
 var force, node, data, maxVal;
 var brake = 0.2;
 var radius = d3.scale.sqrt().range([10, 20]);
+var images = [];
 
 var partyCentres = { 
     con: { x: w / 3, y: h / 3.3}, 
@@ -31,10 +32,17 @@ var svgCentre = {
     x: w / 3.6, y: h / 2
   };
 
+
+
+
 var svg = d3.select("#chart").append("svg")
 	.attr("id", "svg")
 	.attr("width", w)
 	.attr("height", h);
+
+
+
+
 
 var nodeGroup = svg.append("g");
 
@@ -254,7 +262,7 @@ function moveToEnts(alpha) {
 		if (d.entity === 'pub') {
 			centreX = 1200;
 		} else {
-			centreX = entityCentres[d.entity].x;
+			centreX = entityCentres[d.entity].x + 30;
 		}
 
 		d.x += (centreX - d.x) * (brake + 0.02) * alpha * 1.1;
@@ -380,6 +388,9 @@ function display(data) {
 var voiceID;
 var playVoice;
 
+
+
+
 function mouseover(d, i) {
 	// tooltip popup
 	var mosie = d3.select(this);
@@ -389,22 +400,65 @@ function mouseover(d, i) {
 	var entity = d.entityLabel;
 	var offset = $("svg").offset();
 	
+	
+
+	
 
 
 	// image url that want to check
+	
 	var imageFile = "https://raw.githubusercontent.com/ioniodi/D3js-uk-political-donations/master/photos/" + donor + ".ico";
 
+
+	/*taken from 
+	https://stackoverflow.com/questions/34771777/detect-if-given-url-is-proper-image-in-js-synchronously*/
+
+	function isValidImg( url ) {
+	    return new Promise( function ( resolve, reject ) {
+
+	        var image = new Image;
+
+	        image.onload = function ( ) { resolve( image ) };
+	        image.onerror = image.onabort = reject;
+
+	        image.src = url;
+	    } );
+	}
+
+	isValidImg( imageFile ).then( function ( image, donor ) {
+    
+    	var k = images.indexOf(imageFile);
 	
+		if(k > 0) {
+			images.splice(k, 1);
+			images.unshift(imageFile);
+		} else if (k == -1) {
+			images.unshift(imageFile);
+		} else {
+			//do nothing
+		}
+
+		dynamicPics(donor);
+
+	}, function ( event ) {
+	    
+	    
+
+	} );
+	
+
+	
+
+	
+
 	
 	// *******************************************
 	
 	
-	
 
 	
-
-	
-	var infoBox = "<p> Source: <b>" + donor + "</b> " +  "<span><img src='" + imageFile + "' height='42' width='42' onError='this.src=\"https://github.com/favicon.ico\";'></span></p>" 	
+	var infoBox = "<p> Source: <b>" + donor + "</b> " +  "<span><img src='" + imageFile + 
+								"' height='42' width='42' onError='this.src=\"https://github.com/favicon.ico\";'></span></p>"
 	
 	 							+ "<p> Recipient: <b>" + party + "</b></p>"
 								+ "<p> Type of donor: <b>" + entity + "</b></p>"
@@ -418,6 +472,27 @@ function mouseover(d, i) {
 		.html(infoBox)
 			.style("display","block");
 
+
+	
+
+
+
+
+	
+
+
+
+	
+
+
+
+	
+	/*στελνω και το d για να μπορώ να εξακριβώσω αργότερα ποιός έχει τη φωτογραφία*/
+	
+
+
+
+
 	//Kanei speech to donor name meta apo 0,3 deytera
     playVoice = setTimeout(function() {
 		voiceID = meSpeak.speak(d.donor + " has donated, " + amount + ",pounds");
@@ -427,6 +502,46 @@ function mouseover(d, i) {
 	
 	
 	}
+
+
+
+
+
+
+
+
+
+
+/*render dynamicPics*/
+
+function dynamicPics(donor) {
+	
+	
+	if(images.length > 12) {
+		images.pop();
+		donImage.remove();
+		
+		
+	}
+
+	for(i = 0; i < 12; i++) {
+		
+		donImage = svg.append("svg:image")
+		.attr('x', 10)
+		.attr('y', 10 + i * 70)
+		.attr('width', 60)
+		.attr('height', 60)
+		.attr("xlink:href", images[i]);
+
+	}
+
+	
+}
+
+
+
+
+
 
 function mouseout() {
 	// no more tooltips
